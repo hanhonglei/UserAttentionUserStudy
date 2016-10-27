@@ -1,0 +1,160 @@
+﻿#pragma strict
+import System;
+import System.IO;
+ /*
+ 使用方法：
+ 首先为场景设定一个1st Person Controller
+ 1、将待统计计算的物体设置碰撞体component（collider）
+ 2、为这个物体命名一个有意义的名字
+ 3、将此脚本挂接到物体上
+ 4、启动游戏，让用户随意浏览
+ 5、退出游戏，得到每个物体命名的一个文件，文件中将记载统计信息
+ */
+var MainCamera:Camera;
+var  fileName = "MyFile.txt";
+var cullDist = 100;
+private var sr:StreamWriter;
+private var stayTime:float;
+private var bVisible:boolean;
+var maxside = 0.0;
+function Start()
+{
+	if(fileName == "MyFile.txt")
+		sr = File.CreateText(name);
+	else 
+		sr = File.CreateText(fileName);
+	sr.WriteLine (name);
+	sr.Write("物体包围体尺寸：\t");// -xcc 12.22
+	sr.Write(GetComponent.<Collider>().bounds.extents.x+"\t"+GetComponent.<Collider>().bounds.extents.y+"\t"+GetComponent.<Collider>().bounds.extents.z);// -xcc 12.22
+	maxside = (GetComponent.<Collider>().bounds.extents.x > GetComponent.<Collider>().bounds.extents.y ) ? GetComponent.<Collider>().bounds.extents.x  : GetComponent.<Collider>().bounds.extents.y;// -xcc 12.22
+	maxside = ( maxside >GetComponent.<Collider>().bounds.extents.z) ?  maxside : GetComponent.<Collider>().bounds.extents.z;// -xcc 12.22
+	sr.WriteLine("\t最大边长：\t"+ maxside); // -xcc 12.22
+	sr.Write("包围体中心：\t");
+	sr.WriteLine(GetComponent.<Collider>().bounds.center.x+"\t"+GetComponent.<Collider>().bounds.center.y+"\t"+GetComponent.<Collider>().bounds.center.z);  // -xcc 12.22
+	sr.Write("物体中心：\t");
+	sr.WriteLine(transform.position.x+"\t"+transform.position.y+"\t"+transform.position.z);// -xcc 12.22
+	sr.WriteLine ("关注度记录文件");
+	sr.WriteLine ("时间\t\t物体中心在摄像机空间中的深度\t\t和摄像机距离\t\t物体中心在屏幕中心坐标\t\t物体被遮挡比例");
+	stayTime = 0;
+	if(MainCamera == null)
+		MainCamera = Camera.main;
+}
+function OnApplicationQuit() {
+	sr.Write("物体被关注总时间：\t"+stayTime+"\t");
+	sr.WriteLine("时间比率：\t"+ stayTime/Time.time); // -xcc 12.22
+	sr.Write("程序运行总时间：\t");// -xcc 12.22
+	sr.WriteLine(Time.time); // -xcc 12.22
+	sr.Close();
+}
+
+// 由于有些层次对象不存在renderer成员，故而使用几何方式判断是否在视见体内
+static function IsRenderedFrom(trans:Transform, camera : Camera) : boolean
+{
+    var planes = GeometryUtility.CalculateFrustumPlanes(camera);
+	return GeometryUtility.TestPlanesAABB(planes, trans.gameObject.GetComponent.<Collider>().bounds);
+}
+function Update () {
+	bVisible = IsRenderedFrom(transform, MainCamera);
+	if( !bVisible)//!this.renderer.isVisible ||
+	{
+		//Debug.Log(name+"--Invisible");	
+		return;
+	}
+	else
+		//Debug.Log(name+"--Visible");	
+	// 注意：此处的可见,指的是处于视野内,但还可能被其他物体遮挡,此处需要自己做遮挡计算
+		// 自己进行遮挡率估算.将模型中心,8个角分别投射射线给摄像机,最后计算比例,记为遮挡率
+		// 以下为8个角
+	 	var bound = GetComponent.<Collider>().bounds.extents;
+		var dist = Vector3.Distance(GetComponent.<Collider>().bounds.center/*使用collider中心位置transform.position*/, MainCamera.transform.position) - bound.y;
+		if(dist > cullDist) // 如果超过最远距离，则不进行计算
+			return;
+//		Debug.Log(bound.magnitude);
+		
+		// 自己进行遮挡率估算.将模型中心,8个角分别投射射线给摄像机,最后计算比例,记为遮挡率
+	 	var ray = new Ray[9];
+	 	var org = MainCamera.transform.position;
+	 	var targ = GetComponent.<Collider>().bounds.center;
+	 	// 中心
+	 	ray[0]  = Ray(org, targ - org);
+	 	Debug.DrawLine (org, targ);
+		ray[1]  = Ray(org, targ + bound - org);
+		Debug.DrawLine (org, targ + bound);
+		bound.x = -bound.x;
+	    ray[2]  = Ray(org, targ + bound  - org);
+	    Debug.DrawLine (org, targ + bound);
+	    bound.y = -bound.y;
+		ray[3]  = Ray(org, targ + bound  - org);
+		Debug.DrawLine (org, targ + bound);
+		bound.z = -bound.z;
+		ray[4]  = Ray(org, targ + bound  - org);
+		Debug.DrawLine (org, targ + bound);
+		bound.x = -bound.x;
+		ray[5]  = Ray(org, targ + bound  - org);
+		Debug.DrawLine (org, targ + bound);
+		bound.y = -bound.y;
+		ray[6]  = Ray(org, targ + bound  - org);
+		Debug.DrawLine (org, targ + bound);
+		bound.y = -bound.y;
+		bound.z = -bound.z;
+		ray[7]  = Ray(org, targ + bound  - org);
+		Debug.DrawLine (org, targ + bound);
+		bound.x = -bound.x;
+		bound.z = -bound.z;
+		bound.y = -bound.y;
+		ray[8]  = Ray(org, targ + bound  - org);
+		Debug.DrawLine (org, targ + bound);
+// ！！ 完全使用射线方式进行遮挡计算，需要进一步考虑如何实现！！
+		var hitNum = 0;
+		if(dist > 0 )
+		{
+			for(var i = 0; i < 9; i++)
+			{
+				var hit : RaycastHit;
+				if(Physics.Raycast(ray[i].origin,ray[i].direction,hit, dist))
+					if(hit.collider.gameObject != this.gameObject)
+					{
+//						Debug.DrawLine (org, hit.point);
+						hitNum++;
+					}
+			}
+		}
+	    if(hitNum == 9)
+	    	return;
+ 
+		var screenPos : Vector3 = MainCamera.WorldToScreenPoint (transform.position);
+			
+		stayTime += Time.deltaTime;		// 物体处于视见体内的总时间
+		
+		// 当前时间
+		sr.Write(Time.time);
+		sr.Write("\t\t");
+		// 在摄像机空间深度
+		sr.Write(screenPos.z);
+		sr.Write("\t\t");
+		// 和摄像机距离
+		sr.Write(dist);
+		sr.Write("\t\t");
+		// 物体中心在屏幕空间的坐标,-0.5到0.5之间
+		var xx = 0.5-screenPos.x / MainCamera.pixelWidth;
+		var yy = 0.5-screenPos.y / MainCamera.pixelHeight;
+
+//		Debug.Log(screenPos.z);
+//		Debug.Log(dist);
+		sr.Write(xx);
+		sr.Write("\t");
+		sr.Write(yy);
+		sr.Write("\t\t");
+		// 物体投影比例,为了便于计算,投影大小按照模型包围盒直径和摄像机距离的比例
+		// 物体被遮挡比例
+		sr.Write(hitNum / 9.0);
+		sr.WriteLine();
+}
+function OnBecameInvisible () {
+		bVisible = false;
+//		Debug.Log("Invisible!", gameObject);
+}
+function OnBecameVisible() {
+		bVisible = true;
+//		Debug.Log("Visible!", gameObject);
+}
