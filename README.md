@@ -10,3 +10,7 @@ During user navigating, all attention evaluation parameters, proposed in this pa
 After collect enough samples, a user attention measure result of different saliency level game object will be obtained. The attention value can be calculated based on these parameters using the method proposed in the [paper](http://info.scichina.com:8084/sciF/CN/Y2014/V44/I11/1398).
 
 Be ware, as there are quite a few models, the size of this repository is around 1.5G.
+
+## Important
+
+You should first create a folder in the root folder, and name it as `Output`. All game data files will be saved in this subfolder, but is not updated by Github.
