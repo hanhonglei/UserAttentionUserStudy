@@ -19,3 +19,7 @@ Be ware, as there are quite a few models, the size of this repository is around 
 ## Important
 
 You should first create a folder in the root folder, and name it as `Output`. All game data files will be saved in this subfolder, but is not updated by Github.
+
+----
+
+- This project is under [GNU GENERAL PUBLIC LICENSE](https://www.gnu.org/licenses/), please check it in the root folder.
