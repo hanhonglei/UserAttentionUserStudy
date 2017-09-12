@@ -16,7 +16,7 @@ After collect enough samples, a user attention measure result of different salie
 
 Be ware, as there are quite a few models, the size of this repository is around 1.5G.
 
-## Important
+## Important notes
 
 You should first create a folder in the root folder, and name it as `Output`. All game data files will be saved in this subfolder, but is not updated by Github.
 
